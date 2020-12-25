@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 unittest for WebsiteStatus
+
+:copyright: (c) 2020 by Liang Hou.
+:license: Apache-2.0 License, see LICENSE for more details.
 """
 from contextlib import contextmanager
 from http import HTTPStatus

@@ -7,7 +7,7 @@ tracker.tracker
 This module implements WebTracker which sends HTTP GET request to provided URLs and provides their response status.
 
 :copyright: (c) 2020 by Liang Hou.
-:license: MIT License, see LICENSE for more details.
+:license: Apache-2.0 License, see LICENSE for more details.
 """
 
 import time
