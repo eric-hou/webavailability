@@ -1,0 +1,28 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+flake8 = "*"
+setuptools-scm = "*"
+twine = "*"
+pytest = "*"
+pytest-mock = "*"
+pytest-cov = "*"
+tox = "*"
+sphinx = "*"
+doc8 = "*"
+recommonmark = "*"
+parameterized = "*"
+
+[packages]
+msgpack = "*"
+dnspython = "*"
+requests = "*"
+pyOpenSSL = "*"
+kafka-python = "*"
+psycopg2 = "*"
+
+[requires]
+python_version = "3"

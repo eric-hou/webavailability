@@ -1,0 +1,30 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- script: |
+    sudo apt install -y python3 python3-pip
+    python3 -m pip install pipenv tox
+    python3 -m pipenv install --skip-lock --dev
+  displayName: 'Install dependencies'
+
+- script:
+    python3 -m tox -e flake8
+  displayName: 'Linting'
+
+- script: |
+    python3 -m tox -e unittest
+  displayName: 'Unittest'
+
+- script: |
+    python3 -m pipenv run python setup.py --version > .python_package_version.txt
+    python3 -m pipenv run python setup.py sdist bdist_wheel
+  displayName: 'Packaging'
