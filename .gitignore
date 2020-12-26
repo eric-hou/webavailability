@@ -105,3 +105,6 @@ venv.bak/
 
 # IntelliJ's project
 .idea/
+
+# custom package verions file
+.python_package_version.txt

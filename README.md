@@ -91,6 +91,7 @@ An example command is provided as follows. Follow the help to change the paramet
 be found in tracker.py.
 
       LOCATION=SYDNEY
+      # 'https://aiven.io <svg\s+' means the loaded page will be checked against regexp '<svg\s+'
       WEBSITES=https://www.google.com,https://aiven.io <svg\s+
       PERIOD=30
       KAFKA=kafka-3f77ed08-benben3956-6e6a.aivencloud.com:20276

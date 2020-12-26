@@ -41,7 +41,8 @@ import psycopg2
 from libs.status import WebsiteStatus
 from libs.log import Logger
 
-if __name__ == '__main__':
+
+def main():
     parser = argparse.ArgumentParser(description='Websites Availability Recorder')
     parser.add_argument('-d', '--domain', help='''
     A list of domains to be watched, separated by comma. Like 'aiven.io,google.com'. It will be overridden by the
@@ -70,9 +71,6 @@ if __name__ == '__main__':
     ''')
 
     args = parser.parse_args()
-
-    # A temporary path to hold all certificate files passed from environments
-    certs_path = '/tmp/tracker'
 
     domains = os.getenv('DOMAIN') if os.getenv('DOMAIN') else args.domain
     domains = domains.split(',')
@@ -156,3 +154,7 @@ if __name__ == '__main__':
                                                                        message.value))
                 status.insert_status(conn)
                 count += 1
+
+
+if __name__ == '__main__':
+    main()

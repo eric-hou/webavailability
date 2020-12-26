@@ -54,7 +54,7 @@ from libs.webtracker import WebTracker
 from libs.log import Logger
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='Websites Availability Tracker')
     parser.add_argument('-l', '--location', help='''
     The location to tell where this tracker runs from. This is important to tell the availability from a specific
@@ -170,3 +170,7 @@ if __name__ == '__main__':
         if etime < stime + period:
             logger.info(f'Sleeping for {stime + period - etime} seconds')
             time.sleep(stime + period - etime)
+
+
+if __name__ == '__main__':
+    main()
