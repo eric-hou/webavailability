@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='WebAvailability',
+    name='WebsitesAvailability',
     use_scm_version={"write_to": "_version.py", "fallback_version": "1.0"},
     author='Liang Hou',
     author_email='eric.hou.liang@gmail.com',
