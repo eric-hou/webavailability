@@ -54,6 +54,12 @@ For a quick lookup based on URL, an index is built on *url* field on every table
 For example, the following statement is for creating an index for *url* on table *web_activity_aiven_io*.
 
     CREATE INDEX IF NOT EXISTS web_activity_url_index_aiven_io ON web_activity_aiven_io (url);
+    
+# Installation
+From PyPI
+
+    pip install WebsitesAvailability
+Note: Depenpding on our environment, you might have to install libpq-dev in Debian/Ubuntu, libpq-devel on Centos/Cygwin/Babun to make the dependency psycopg2 installed succesfully.
 
 # Build and Test
 ## To build a pypi package
@@ -71,7 +77,80 @@ For example, the following statement is for creating an index for *url* on table
     docker build -t webavailability-recorder -f Dockerfile-recorder .
 
 # Run
-## Run from pipenv directly
+## Run from PyPI installation
+In Linux, you can run *tracker.py* and *recorder.py* directly from your PATH. The usage can be found on help.
+
+
+    eric@eric-Virtual-Machine:~$ tracker.py -h
+    usage: tracker.py [-h] [-l LOCATION] [-w WEBSITES] [-t TIMEOUT] [-p PERIOD] [-k KAFKA] [-c CA]
+                      [-e CERT] [-y KEY]
+
+    Websites Availability Tracker
+    
+    optional arguments:
+      -h, --help            show this help message and exit
+      -l LOCATION, --location LOCATION
+                            The location to tell where this tracker runs from. This is important to
+                            tell the availability from a specific location.
+      -w WEBSITES, --websites WEBSITES
+                            A list of websites URLs to be watched with their optional regular
+                            expression to match for the returned page. Separated by comma. Note: URL
+                            and its regular expression is separated with spaces. Like
+                            'https://aiven.io <svg\s+,https://www.google.com', which means: 1.
+                            https://aiven.io will be watched and loaded page is expected to match
+                            regexp '<svg\s+' 2. https://www.google.com will be watched It can be
+                            overridden by the environment variable WEBSITES.
+      -t TIMEOUT, --timeout TIMEOUT
+                            The timeout in seconds to determine connection timeout. Default is 10
+                            seconds. It can be overridden by the environment variable TIMEOUT.
+      -p PERIOD, --period PERIOD
+                            Period time in seconds at least which all Websites Availability will be
+                            monitored. Default is 300 seconds. It can be overridden by environment
+                            variable PERIOD.
+      -k KAFKA, --kafka KAFKA
+                            Kafka bootstrap server. It can be overridden by the environment variable
+                            KAFKA.
+      -c CA, --ca CA        Kafka server CA(Certificate Authority) file path. It can be overridden
+                            by the environment variable CA.
+      -e CERT, --cert CERT  This client certificate file path. It can be overridden by the
+                            environment variable CERT.
+      -y KEY, --key KEY     This client private key file path. It can be overridden by the
+                            environment variable KEY.
+
+
+    eric@eric-Virtual-Machine:~$ recorder.py -h
+    usage: recorder.py [-h] [-d DOMAIN] [-p POSTGRES] [-g PGCA] [-k KAFKA] [-c CA]
+                   [-e CERT] [-y KEY]
+
+    Websites Availability Recorder
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -d DOMAIN, --domain DOMAIN
+                            A list of domains to be watched, separated by comma.
+                            Like 'aiven.io,google.com'. It will be overridden by
+                            the environment variable DOMAIN.
+      -p POSTGRES, --postgres POSTGRES
+                            PostgresSQL server URI. A sample like postgres://avnad
+                            min:rbb8en66jn7tvezg@pg-9971643.aivencloud.com:20274/d
+                            efaultdb?sslmode=require It can be overridden by the
+                            environment variable POSTGRES.
+      -g PGCA, --pgca PGCA  PostgresSQL server CA file. It can be overridden by
+                            the environment variable PGCA.
+      -k KAFKA, --kafka KAFKA
+                            Kafka bootstrap server. It can be overridden by the
+                            environment variable KAFKA.
+      -c CA, --ca CA        Kafka server CA(Certificate Authority) file path. The
+                            CA content's can be overridden by the environment
+                            variable CA.
+      -e CERT, --cert CERT  This client certificate file path. The certificate's
+                            content can be overridden by the environment variable
+                            CERT.
+      -y KEY, --key KEY     This client private key file path. The private key's
+                            content can be overridden by the environment variable
+                            KEY.
+    
+## Run from repo with pipenv
 ### To run Tracker
 An example command is provided as follows. Follow the help to change the parameters.
 
