@@ -7,7 +7,7 @@ Recorder takes the messages from Kafka and records status messages in PostgresSQ
 Tracker detects URLs through HTTP get and optionally, checks the page content against provided regexp.
 It provides the following metrics along with two fixed information - location and URL.
 * status - One of "responsive, "unresponsive"
-* phrase - One of all HTTP status strings and three additional - 'ssl error', 'connection timeout', 'Page content not expected'.
+* phrase - One of all HTTP status strings and four additional ones- 'domain not exist', 'ssl error', 'connection timeout', 'Page content not expected'
 * dns - DNS resolve cost
 * response - Page load cost
 * detail - When page content doesn't match the provided regular expression, this filed holds the regular expression.

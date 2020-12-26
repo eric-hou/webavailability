@@ -30,7 +30,7 @@ class WebsiteStatus(dict):
         """
         # Status' UTC timestamp
         timestamp = datetime.utcnow().timestamp()
-        # Domain is used as the topic
+        # Domain is used as the topic with dots replaced with underscores.
         self.topic = urlparse(url).netloc.replace('.', '_')
         super().__init__({'from': status_from.lower(), 'url': url, 'timestamp': timestamp,
                           'status': status, 'phrase': phrase, 'dns': dns_time,
@@ -45,7 +45,7 @@ class WebsiteStatus(dict):
         :return:
         """
         response_status_type_sql = "CREATE TYPE response_status AS ENUM ('responsive', 'unresponsive');"
-        # A complete phrases include all HTTP status codes and three additional ones.
+        # A complete phrases include all HTTP status codes and four additional ones.
         phrases = [getattr(x, 'phrase').lower() for x in HTTPStatus] + ['domain not exist', 'ssl error',
                                                                         'connection timeout',
                                                                         'Page content not expected']
@@ -65,6 +65,7 @@ class WebsiteStatus(dict):
     def create_table_schema(cls, topic, db):
         """
         Given a DB connection, create a corresponding PostgreSQL table for the specific topic.
+        The table name is in the format of web_activity_<topic>, which dots are replaced with underscores.
         :param topic: The specific topic to be created for
         :param db: A PostgresSQL DB connection instance.
         """
@@ -144,6 +145,6 @@ class WebsiteStatus(dict):
         dictv = msgpack.unpackb(raw_bytes, raw=False)
         reborn = WebsiteStatus(dictv['from'], dictv['url'], dictv['status'], dictv['phrase'], dictv['dns'],
                                dictv['response'], dictv['detail'], dictv['offset'])
-        # timestamp has to be set to the original value since reborn comes with a newly created timestamp
+        # timestamp has to be reset to the original value since reborn comes with a newly created timestamp
         reborn['timestamp'] = dictv['timestamp']
         return reborn

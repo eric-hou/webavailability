@@ -145,7 +145,6 @@ def main():
     while True:
         msg_pack = consumer.poll(timeout_ms=2000)
         for tp, messages in msg_pack.items():
-            # status = msg.value
             for message in messages:
                 status = message.value
                 status['offset'] = message.offset

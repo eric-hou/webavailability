@@ -40,6 +40,8 @@ def test_webtracker_allpaths(mocker):
     Test all paths in WebTracker implementation by providing the following response.
 
     https://aiven.io --> 200 (ok case)
+    https://contentmatched.com --> 200 (Page content matched, ok case)
+    https://contentdoesntmatch.com --> 200 (Page content not expected)
     https://www.expireddns.com ---> 403 (none 200 case)
     https://notexistingdns.com --> Exception dns.resolver.NXDOMAIN case
     https://timeout.com --> timeout error (Exception requests.exceptions.ConnectTimeout)
@@ -53,7 +55,7 @@ def test_webtracker_allpaths(mocker):
         For tests, it returns as follows.
 
         notexistingdns.com --> Exception dns.resolver.NXDOMAIN case
-        Any other --> '8.8.8.8'
+        Anything else --> '8.8.8.8'
 
         :param domain: Domain name
         :param qtype: query string, ignored.
@@ -70,6 +72,7 @@ def test_webtracker_allpaths(mocker):
         Basically it covers all test paths.
         Among the return,
         https://aiven.io --> 200 (ok case)
+        https://contentmatched.com --> 200 (Page content matched, ok case)
         https://contentdoesntmatch.com --> 200 (Page content not expected)
         https://non200status.com --> 403 (non 200 case)
         https://www.sslfailure.com --->  Exception requests.exceptions.SSLError
@@ -80,7 +83,7 @@ def test_webtracker_allpaths(mocker):
         :param timeout: timeout in seconds
         :return:
         """
-        if url == 'https://aiven.io' or url == 'https://contentdoesntmatch.com':
+        if url in ['https://aiven.io', 'https://contentdoesntmatch.com', 'https://contentmatched.com']:
             return MockRequestResult(200)
         elif url == 'https://non200status.com':
             return MockRequestResult(403)
@@ -91,10 +94,12 @@ def test_webtracker_allpaths(mocker):
         elif url == 'https://anyotherexception.com':
             raise Exception('Any Exception')
 
-    reg_exp = '<title>\\s*Welcome.*\\s*<title>'
+    reg_exp_nomatch = '<title>\\s*Bad.*\\s*</title>'
+    reg_exp_match = '<title>\\s*Welcome.*\\s*</title>'
     websites = {'https://aiven.io': '', 'https://non200status.com': '', 'https://www.sslfailure.com': '',
                 'https://notexistingdns.com': '', 'https://timeout.com': '',
-                'https://anyotherexception.com': '', 'https://contentdoesntmatch.com': reg_exp}
+                'https://anyotherexception.com': '', 'https://contentdoesntmatch.com': reg_exp_nomatch,
+                'https://contentmatched.com': reg_exp_match}
 
     mocker.patch('libs.webtracker.dns.resolver.resolve', mock_dns_resolver)
     mocker.patch('libs.webtracker.requests.get', mock_requests_get)
@@ -109,11 +114,11 @@ def test_webtracker_allpaths(mocker):
         assert webstatus['timestamp'] > currenttime - 1
 
         if url in ['https://aiven.io', 'https://non200status.com', 'https://www.sslfailure.com',
-                   'https://contentdoesntmatch.com']:
+                   'https://contentdoesntmatch.com', 'https://contentmatched.com']:
             assert webstatus['status'] == 'responsive'
         else:
             assert webstatus['status'] == 'unresponsive'
-        if url in ['https://aiven.io']:
+        if url in ['https://aiven.io', 'https://contentmatched.com']:
             assert webstatus['phrase'] == 'ok'
         elif url in ['https://non200status.com']:
             assert webstatus['phrase'] == tracker.status_mapping[403]
@@ -127,15 +132,17 @@ def test_webtracker_allpaths(mocker):
             assert webstatus['phrase'] == 'any exception'
         elif url in ['https://contentdoesntmatch.com']:
             assert webstatus['phrase'] == 'Page content not expected'
-            assert webstatus['detail'] == reg_exp
+            assert webstatus['detail'] == reg_exp_nomatch
 
         if url in ['https://aiven.io', 'https://non200status.com', 'https://www.sslfailure.com',
-                   'https://timeout.com', 'https://anyotherexception.com', 'https://contentdoesntmatch.com']:
+                   'https://timeout.com', 'https://anyotherexception.com',
+                   'https://contentdoesntmatch.com', 'https://contentmatched.com']:
             assert webstatus['dns'] >= 0
         else:
             assert webstatus['dns'] is None
 
-        if url in ['https://aiven.io', 'https://non200status.com', 'https://contentdoesntmatch.com']:
+        if url in ['https://aiven.io', 'https://non200status.com',
+                   'https://contentdoesntmatch.com', 'https://contentmatched.com']:
             assert webstatus['response'] >= 0
         else:
             assert webstatus['response'] is None

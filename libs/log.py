@@ -39,7 +39,7 @@ class KafkaLoggingHandler(logging.Handler):
 
 class Logger:
     """
-    A logger which either log to local rotated files or remote Kafka server.
+    A logger which either log to local sys.stderr or remote Kafka server.
     """
 
     def __init__(self, name, kafka_producer=None, kafka_admin=None):

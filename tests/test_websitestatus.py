@@ -140,12 +140,14 @@ def test_deserialize():
     """
     Test WebsiteStatus::deserialize
     """
-    # This raw is a msgpack.packb result from WebsiteStatus(15, 'Sydney', 'https://aiven.io', 'responsive',
-    #                                                       'forbidden', 10, 300)
+    # This raw is a msgpack.packb result from WebsiteStatus('Sydney', 'https://aiven.io', 'responsive',
+    #                                                       'forbidden', 10, 300, '', 15)
     raw = b'\x89\xa4from\xa6sydney\xa3url\xb0https://aiven.io\xa9timestamp\xcbA\xd7\xf9L\x02d.\xa1\xa6status\xaa'\
           b'responsive\xa6phrase\xa9forbidden\xa3dns\n\xa8response\xcd\x01,\xa6detail\xa0\xa6offset\x0f'
+    # Create the original WebsiteStatus object for this serialized bytes.
     status = WebsiteStatus('Sydney', 'https://aiven.io', 'responsive', 'forbidden', 10, 300, '', 15)
     # Reset timestamp to expected value since timestamp is created lively for every instance.
     # Therefore, it has to be reset to the value for raw
     status['timestamp'] = 1608855561.565346
+    # Verify the deserialized one equals to the original one
     assert WebsiteStatus.deserialize(raw) == status
