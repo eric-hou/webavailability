@@ -8,7 +8,7 @@ setup(
     description='A production-ready Website Availability tracking system',
     url='https://github.com/eric-hou/webavailability',
     setup_requires=['setuptools_scm'],
-    packages=find_packages(),
+    packages=find_packages(exclude='tests'),
     scripts=['tracker.py', 'recorder.py'],
     classifiers=[
         "Programming Language :: Python :: 3",
