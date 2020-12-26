@@ -44,7 +44,6 @@ optional arguments:
 
 import os
 import time
-from pathlib import Path
 from urllib.parse import urlparse
 import argparse
 
@@ -80,21 +79,18 @@ if __name__ == '__main__':
     Kafka bootstrap server. It can be overridden by the environment variable KAFKA.
     ''')
     parser.add_argument('-c', '--ca', help='''
-    Kafka server CA(Certificate Authority) file path. The CA content's can be overridden by the environment
-    variable CA.
+    Kafka server CA(Certificate Authority) file path. It can be overridden by the environment variable CA.
     ''')
     parser.add_argument('-e', '--cert', help='''
-    This client certificate file path. The certificate's content can be overridden by the environment variable CERT.
+    This client certificate file path. It can be overridden by the environment variable CERT.
     ''')
     parser.add_argument('-y', '--key', help='''
-    This client private key file path. The private key's content can be overridden by the environment variable KEY.
+    This client private key file path. It can be overridden by the environment variable KEY.
     ''')
-
-    # A temporary path to hold all certificate files passed from environments
-    certs_path = '/tmp/tracker'
 
     args = parser.parse_args()
 
+    location = os.getenv('LOCATION') if os.getenv('LOCATION') else args.location
     websites = os.getenv('WEBSITES') if os.getenv('WEBSITES') else args.websites
     urls = {}
     for website in websites.split(','):
@@ -109,21 +105,9 @@ if __name__ == '__main__':
     timeout = int(os.getenv('TIMEOUT')) if os.getenv('TIMEOUT') else args.timeout
     period = int(os.getenv('PERIOD')) if os.getenv('PERIOD') else args.period
     kafka = os.getenv('KAFKA') if os.getenv('KAFKA') else args.kafka
-    ca = args.ca
-    if os.getenv('CA'):
-        cafile = Path(certs_path, 'ca.perm')
-        cafile.write_text(os.getenv('CA'))
-        ca = cafile
-    cert = args.cert
-    if os.getenv('CERT'):
-        certfile = Path(certs_path, 'client.cert')
-        certfile.write_text(os.getenv('CERT'))
-        cert = certfile
-    key = args.key
-    if os.getenv('KEY'):
-        keyfile = Path(certs_path, 'client.key')
-        keyfile.write_text(os.getenv('KEY'))
-        key = keyfile
+    ca = os.getenv('CA') if os.getenv('CA') else args.ca
+    cert = os.getenv('CERT') if os.getenv('CERT') else args.cert
+    key = os.getenv('KEY') if os.getenv('KEY') else args.key
 
     # Kafka topics to be created
     # The topics are in the format of 'webactivity-{domain}'
@@ -171,7 +155,7 @@ if __name__ == '__main__':
     # Close admin now since it is not used any more
     admin.close()
 
-    tracker = WebTracker(args.location, urls, timeout)
+    tracker = WebTracker(location, urls, timeout)
 
     # Forever loop to monitor the websites
     while True:

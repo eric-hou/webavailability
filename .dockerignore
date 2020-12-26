@@ -1,0 +1,8 @@
+.venv
+.tox
+.idea
+.github
+.pytest_cache
+.git
+.gitignore
+azure-piplines.yml

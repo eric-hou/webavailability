@@ -33,7 +33,6 @@ optional arguments:
 
 import os
 import argparse
-from pathlib import Path
 
 from kafka import KafkaConsumer, KafkaProducer
 from kafka.admin import KafkaAdminClient
@@ -75,32 +74,14 @@ if __name__ == '__main__':
     # A temporary path to hold all certificate files passed from environments
     certs_path = '/tmp/tracker'
 
-    domains = os.getenv('domain') if os.getenv('DOMAIN') else args.domain
+    domains = os.getenv('DOMAIN') if os.getenv('DOMAIN') else args.domain
     domains = domains.split(',')
-    pguri = args.postgres
-    if os.getenv('POSTGRES'):
-        pguri = os.getenv('POSTGRES')
-    pgca = args.pgca
-    if os.getenv('PGCA'):
-        pgcafile = Path(certs_path, 'pgca.perm')
-        pgcafile.write_text(os.getenv('PGCA'))
-        pgca = pgcafile
+    pguri = os.getenv('POSTGRES') if os.getenv('POSTGRES') else args.postgres
+    pgca = os.getenv('PGCA') if os.getenv('PGCA') else args.pgca
     kafka = os.getenv('KAFKA') if os.getenv('KAFKA') else args.kafka
-    ca = args.ca
-    if os.getenv('CA'):
-        cafile = Path(certs_path, 'ca.perm')
-        cafile.write_text(os.getenv('CA'))
-        ca = cafile
-    cert = args.cert
-    if os.getenv('CERT'):
-        certfile = Path(certs_path, 'client.cert')
-        certfile.write_text(os.getenv('CERT'))
-        cert = certfile
-    key = args.key
-    if os.getenv('KEY'):
-        keyfile = Path(certs_path, 'client.key')
-        keyfile.write_text(os.getenv('KEY'))
-        key = keyfile
+    ca = os.getenv('CA') if os.getenv('CA') else args.ca
+    cert = os.getenv('CERT') if os.getenv('CERT') else args.cert
+    key = os.getenv('KEY') if os.getenv('KEY') else args.key
 
     conn = None
     try:

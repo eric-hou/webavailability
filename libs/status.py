@@ -73,7 +73,7 @@ class WebsiteStatus(dict):
         CREATE TABLE IF NOT EXISTS web_activity_{topic} (
         id SERIAL PRIMARY KEY,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        topic_offset integer DEFAULT -1,
+        topic_offset BIGINT DEFAULT -1,
         test_from varchar(32) NOT NULL,
         url varchar(256) NOT NULL,
         event_time BIGINT,
