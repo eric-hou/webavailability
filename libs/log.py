@@ -4,7 +4,7 @@ Logging implementation.
 This is a logging module which enables you local logging or remote logging to a Kafka Server under a specific topic.
 
 :copyright: (c) 2020 by Liang Hou.
-:license: Apache-2.0, see LICENSE for more details.
+:license: MIT, see LICENSE for more details.
 """
 
 import logging
