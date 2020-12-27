@@ -1,7 +1,7 @@
 # Introduction 
 This is a project to track and report Websites availabilities. It contains two components - Tracker and Recorder.
 Tracker probes Websites and pushes the availability status messages to Kafka Cluster.
-Recorder takes the messages from Kafka and records status messages in PostgresSQL server.
+Recorder takes the messages from Kafka and records status messages in PostgreSQL server.
 
 # Tracker
 Tracker detects URLs through HTTP get and optionally, checks the page content against provided regexp.

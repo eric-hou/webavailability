@@ -8,7 +8,6 @@ unittest for WebsiteStatus
 from contextlib import contextmanager
 from http import HTTPStatus
 import msgpack
-import libs.status
 from libs.status import WebsiteStatus
 
 
@@ -16,27 +15,24 @@ class MockDB:
     """
     A mock DB Connection to verify SQl statement.
     """
-    def __init__(self, somethingfetch=False):
+    def __init__(self, something_to_fetch=None):
         self.sqls = []
-        self.somethingfetch = somethingfetch
+        self.something_to_fetch = something_to_fetch
 
     class MockCursor:
-        def __init__(self, somethingfetch=False):
+        def __init__(self, something_to_fetch=None):
             self.sqls = []
-            self.somethingfetch = somethingfetch
+            self.something_to_fetch = something_to_fetch
 
         def execute(self, sql):
             self.sqls.append(sql)
 
         def fetchone(self):
-            if self.somethingfetch:
-                return True
-            else:
-                return False
+            return self.something_to_fetch
 
     @contextmanager
     def cursor(self):
-        curs = MockDB.MockCursor(self.somethingfetch)
+        curs = MockDB.MockCursor(self.something_to_fetch)
         yield curs
         self.sqls = curs.sqls
 
@@ -95,6 +91,26 @@ def test_table_schema():
     db = MockDB()
     WebsiteStatus.create_table_schema('aiven.io', db)
     assert db.sqls == [table_sql, index_sql]
+
+
+def test_get_last_offset():
+    """
+    Verify WebsiteStatus::get_last_offset by checking a correct SELECT SQL is invoked and a correct
+    offset is returned.
+    """
+    sql = '''
+        SELECT topic_offset from web_activity_aiven_io order by id DESC LIMIT 1;
+        '''
+    # Verify returning -1 when there is nothing
+    db = MockDB()
+    r = WebsiteStatus.get_last_offset('aiven.io', db)
+    assert db.sqls == [sql]
+    assert r == -1
+    # Verify returning 199 when there is 199 as last offset
+    db = MockDB([199])
+    r = WebsiteStatus.get_last_offset('aiven.io', db)
+    assert db.sqls == [sql]
+    assert r == 199
 
 
 def test_insert_status():
