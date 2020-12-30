@@ -6,7 +6,7 @@ libs.status
 This module implements WebsiteStatus.
 
 :copyright: (c) 2020 by Liang Hou.
-:license: MIT License, see LICENSE for more details.
+:license: Apache-2.0 License, see LICENSE for more details.
 """
 from http import HTTPStatus
 from datetime import datetime

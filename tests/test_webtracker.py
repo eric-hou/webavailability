@@ -3,7 +3,7 @@
 unittest for WebTracker
 
 :copyright: (c) 2020 by Liang Hou.
-:license: MIT License, see LICENSE for more details.
+:license: Apache-2.0 License, see LICENSE for more details.
 """
 
 from datetime import datetime
