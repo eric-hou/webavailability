@@ -7,8 +7,14 @@ unittest for WebsiteStatus
 """
 from contextlib import contextmanager
 from http import HTTPStatus
+from random import randint
 import msgpack
 from libs.status import WebsiteStatus
+
+
+# A complete phrases include all HTTP status codes and four additional.
+phrases = [getattr(x, 'phrase').lower() for x in HTTPStatus] + ['domain not exist', 'ssl error',
+                                                                'connection timeout', 'page content not expected']
 
 
 class MockDB:
@@ -47,12 +53,9 @@ def test_type_schema():
     """
     response_status_type_select_sql = "select 1 from pg_type where typname = 'response_status'"
     response_status_type_sql = "CREATE TYPE response_status AS ENUM ('responsive', 'unresponsive');"
-    # A complete phrases include all HTTP status codes and three additional ones.
-    phrases = [getattr(x, 'phrase').lower() for x in HTTPStatus] + ['domain not exist', 'ssl error',
-                                                                    'connection timeout', 'Page content not expected']
     phrases_type_select_sql = "select 1 from pg_type where typname = 'phrase_status'"
-    phrases = tuple(phrases)
-    phrase_type_sql = f'CREATE TYPE phrase_status AS ENUM {phrases};'
+    phrases_tuple = tuple(phrases)
+    phrase_type_sql = f'CREATE TYPE phrase_status AS ENUM {phrases_tuple};'
 
     db = MockDB()
     WebsiteStatus.create_type_schema(db)
@@ -107,10 +110,29 @@ def test_get_last_offset():
     assert db.sqls == [sql]
     assert r == -1
     # Verify returning 199 when there is 199 as last offset
-    db = MockDB([199])
+    rnum = randint(1, 0xFFFFFFFF)
+    db = MockDB([rnum])
     r = WebsiteStatus.get_last_offset('aiven.io', db)
     assert db.sqls == [sql]
-    assert r == 199
+    assert r == rnum
+
+
+def test_abnormal():
+    """
+    Verify WebsiteStatus::abnormal
+    """
+    webstatus = WebsiteStatus('Sydney', 'https://aiven.io', 'reSponsive', 'Ok', 10, 300)
+    assert webstatus.abnormal() is False
+    # Loop all phrases excluding 'ok' for 'responsive'
+    for phrase in phrases:
+        if phrase == 'ok':
+            continue
+        webstatus = WebsiteStatus('Sydney', 'https://aiven.io', 'responsive', phrase, 10, 300)
+        assert webstatus.abnormal() is True
+    # Loop all phrases for 'unresponsive'
+    for phrase in phrases:
+        webstatus = WebsiteStatus('Sydney', 'https://aiven.io', 'unresponsive', phrase, 10, 300)
+        assert webstatus.abnormal() is True
 
 
 def test_insert_status():
@@ -135,21 +157,18 @@ def test_serialize():
     """
     Test WebsiteStatus::serialize
     """
-    webstatus = WebsiteStatus('Sydney', 'https://aiven.io', 'responsive', 'ok', 10, 300, '', 100)
-    s1 = webstatus.serialize()
-    s2 = {'from': 'sydney', 'url': 'https://aiven.io', 'timestamp': webstatus['timestamp'],
-          'status': 'responsive', 'phrase': 'ok', 'dns': 10, 'response': 300, 'detail': '', 'offset': 100}
-    # webstatus is a dictionary
-    assert s1 == msgpack.packb(s2, use_bin_type=True)
-
-    webstatus = WebsiteStatus('Sydney', 'https://aiven.io', 'responsive', 'Page content not expected',
-                              10, 300, '<svg\\s+', 100)
-    s1 = webstatus.serialize()
-    s2 = {'from': 'sydney', 'url': 'https://aiven.io', 'timestamp': webstatus['timestamp'],
-          'status': 'responsive', 'phrase': 'Page content not expected', 'dns': 10, 'response': 300,
-          'detail': '<svg\\s+', 'offset': 100}
-    # webstatus is a dictionary
-    assert s1 == msgpack.packb(s2, use_bin_type=True)
+    for status in ['responsive', 'unresponsive']:
+        for phrase in phrases:
+            if phrase == 'page content not expected':
+                detail = '<svg\\s+'
+            else:
+                detail = ''
+            webstatus = WebsiteStatus('Sydney', 'https://aiven.io', status, phrase, 10, 300, detail, 100)
+            s1 = webstatus.serialize()
+            s2 = {'from': 'sydney', 'url': 'https://aiven.io', 'timestamp': webstatus['timestamp'],
+                  'status': status, 'phrase': phrase, 'dns': 10, 'response': 300, 'detail': detail, 'offset': 100}
+            # webstatus is a dictionary
+            assert s1 == msgpack.packb(s2, use_bin_type=True)
 
 
 def test_deserialize():

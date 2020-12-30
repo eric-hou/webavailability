@@ -131,7 +131,7 @@ def test_webtracker_allpaths(mocker):
         elif url in ['https://anyotherexception.com']:
             assert webstatus['phrase'] == 'any exception'
         elif url in ['https://contentdoesntmatch.com']:
-            assert webstatus['phrase'] == 'Page content not expected'
+            assert webstatus['phrase'] == 'page content not expected'
             assert webstatus['detail'] == reg_exp_nomatch
 
         if url in ['https://aiven.io', 'https://non200status.com', 'https://www.sslfailure.com',

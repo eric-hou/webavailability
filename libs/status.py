@@ -22,7 +22,7 @@ class WebsiteStatus(dict):
         :param url: Website URL, like https://aiven.io
         :param status: One of "responsive, "unresponsive"
         :param phrase: Status description. This includes all HTTP status code phrases like 'ok', 'forbidden', etc, and
-        three additional phrases: 'domain not exist', 'ssl error', and 'connection timeout'.
+        four additional phrases: 'domain not exist', 'ssl error', 'connection timeout' and 'Page content not expected'.
         :param dns_time: Time in ms taken to resolve DNS.
         :param response_time: Time in ms taken totally to load the Website page.
         :param detail: When phrase is 'Page content not expected', detail shows regular expression for this match.
@@ -32,8 +32,8 @@ class WebsiteStatus(dict):
         timestamp = datetime.utcnow().timestamp()
         # Domain is used as the topic with dots replaced with underscores.
         self.topic = urlparse(url).netloc.replace('.', '_')
-        super().__init__({'from': status_from.lower(), 'url': url, 'timestamp': timestamp,
-                          'status': status, 'phrase': phrase, 'dns': dns_time,
+        super().__init__({'from': status_from.lower(), 'url': url.lower(), 'timestamp': timestamp,
+                          'status': status.lower(), 'phrase': phrase.lower(), 'dns': dns_time,
                           'response': response_time, 'detail': detail, 'offset': offset})
 
     @classmethod
@@ -48,7 +48,7 @@ class WebsiteStatus(dict):
         # A complete phrases include all HTTP status codes and four additional ones.
         phrases = [getattr(x, 'phrase').lower() for x in HTTPStatus] + ['domain not exist', 'ssl error',
                                                                         'connection timeout',
-                                                                        'Page content not expected']
+                                                                        'page content not expected']
         phrases = tuple(phrases)
         phrase_type_sql = f'CREATE TYPE phrase_status AS ENUM {phrases};'
 
@@ -112,6 +112,15 @@ class WebsiteStatus(dict):
                 return r[0]
             else:
                 return -1
+
+    def abnormal(self):
+        """
+        Return whether it is an abnormal status. A status is abnormal when:
+        1. unresponsive
+        2. Responsive with any non 'ok' phrase
+        :return: True or False
+        """
+        return self['status'] == 'unresponsive' or self['phrase'] != 'ok'
 
     def insert_status(self, db):
         """
