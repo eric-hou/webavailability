@@ -109,7 +109,7 @@ def test_get_last_offset():
     r = WebsiteStatus.get_last_offset('aiven.io', db)
     assert db.sqls == [sql]
     assert r == -1
-    # Verify returning 199 when there is 199 as last offset
+    # Verify returning the correct number for the existing last offset
     rnum = randint(1, 0xFFFFFFFF)
     db = MockDB([rnum])
     r = WebsiteStatus.get_last_offset('aiven.io', db)
