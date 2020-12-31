@@ -26,6 +26,9 @@ optional arguments:
                         The certificate's content can be overridden by the environment variable CERT.
   -y KEY, --key KEY     This client private key file path.
                         The private key's content can be overridden by the environment variable KEY.
+  -s, --smart           Smart mode. In this mode, continuous healthy records are merged into one with event time
+                        updated. It saves a lot of DB space since most of records are healthy. It can be overridden by
+                        the environment variable SMART.
 
 :copyright: (c) 2020 by Liang Hou.
 :license: Apache-2.0 License, see LICENSE for more details.
@@ -69,6 +72,10 @@ def main():
     parser.add_argument('-y', '--key', help='''
     This client private key file path. The private key's content can be overridden by the environment variable KEY.
     ''')
+    parser.add_argument('-s', '--smart', action='store_true', default=False, help='''
+    Smart mode. In this mode, continuous healthy records are merged into one with event time updated. It saves a lot
+    of DB space since most of records are healthy. It can be overridden by the environment variable SMART.
+    ''')
 
     args = parser.parse_args()
 
@@ -80,6 +87,7 @@ def main():
     ca = os.getenv('CA') if os.getenv('CA') else args.ca
     cert = os.getenv('CERT') if os.getenv('CERT') else args.cert
     key = os.getenv('KEY') if os.getenv('KEY') else args.key
+    smart = os.getenv('SMART') if os.getenv('SMART') else args.smart
 
     conn = None
     try:
@@ -151,7 +159,10 @@ def main():
                 logger.info("count: %d - %s:%d:%d: key=%s value=%s" % (count, tp.topic, tp.partition,
                                                                        message.offset, message.key,
                                                                        message.value))
-                status.insert_status(conn)
+                if smart:
+                    status.insert_status_smart(conn)
+                else:
+                    status.insert_status(conn)
                 count += 1
 
 

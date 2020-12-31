@@ -1,7 +1,9 @@
 # Introduction 
 This is a project to track and report Websites availabilities. It contains two components - Tracker and Recorder.
 Tracker probes Websites and pushes the availability status messages to Kafka Cluster.
-Recorder takes the messages from Kafka and records status messages in PostgreSQL server.
+Recorder subscribes its interested domains, takes the messages from Kafka and records status messages in PostgreSQL server.
+These two components work independently of each other. Particularly, Recorder can start from where it stops without worrying losing tracking status.
+Note: To prevent duplicated events recorded to DB, domains can only be recorded by one running Recorder.
 
 # Tracker
 Tracker detects URLs through HTTP get and optionally, checks the page content against provided regexp.
@@ -15,8 +17,13 @@ It provides the following metrics along with two fixed information - location an
 Tracker polls all provided URLs at the specified interval sending the status to the specified Kafka server in msgpack format (https://msgpack.org/index.html).
 
 # Recorder
-Recorder takes messages which it is interested in from the specified Kafka and stores it in the specified PostgreSQL server.
-Only messages for interested domains are subscribed.
+Recorder subscribes its interested domains, takes messages from the specified Kafka and stores it in the specified PostgreSQL server.
+
+There are two work modes for Recorder.
+
+* Normal mode - Every status record is inserted into DB
+* Smart mode - Continuous healthy records occupy single record in DB, which reduces a lot of redundant healthy records.
+
 ## ENUM types definition
 As mentioned above, there are two types of strings are tracked - *status* and *phrase*.
 To validate the input and save table space, two ENUM types are defined.
@@ -149,19 +156,29 @@ In Linux, you can run *tracker.py* and *recorder.py* directly from your PATH. Th
       -y KEY, --key KEY     This client private key file path. The private key's
                             content can be overridden by the environment variable
                             KEY.
+      -s, --smart           Smart mode. In this mode, continuous healthy records are merged into one with event time
+                            updated. It saves a lot of DB space since most of records are healthy. It can be overridden by
+                            the environment variable SMART.
     
 ## Run from repo with pipenv
 ### To run Tracker
 An example command is provided as follows. Follow the help to change the parameters.
 
     pipenv install
-    pipenv run python tracker.py -l sydney -w https://www.google.com,https://aiven.io -k "kafka-3f77ed08-benben3956-6e6a.aivencloud.com:20276" -c "C:\Users\EricHou\Downloads\aiven\ca.pem" -e "C:\Users\EricHou\Downloads\aiven\service.cert" -y "C:\Users\EricHou\Downloads\aiven\service.key" -p 30
+    pipenv run python tracker.py -l sydney -w https://www.google.com,https://aiven.io -k "kafka-xxxxx.aivencloud.com:20276" -c "C:\Users\EricHou\Downloads\aiven\ca.pem" -e "C:\Users\EricHou\Downloads\aiven\service.cert" -y "C:\Users\EricHou\Downloads\aiven\service.key" -p 30
 
 ### To run Recorder
 An example command is provided as follows. Follow the help to change the parameters.
 
     pipenv install
-    pipenv run python recorder.py -d www.google.com,aiven.io -k "kafka-3f77ed08-benben3956-6e6a.aivencloud.com:20276" -c "C:\Users\EricHou\Downloads\aiven\ca.pem" -e "C:\Users\EricHou\Downloads\aiven\service.cert" -y "C:\Users\EricHou\Downloads\aiven\service.key" -p "postgres://username:password@pg-9971643-benben3956-6e6a.aivencloud.com:20274/webavailability?sslmode=require" -g "C:\Users\EricHou\Downloads\aiven\pgca.pem"
+
+Run in normal mode
+
+    pipenv run python recorder.py -d www.google.com,aiven.io -k "kafka-xxxxx.aivencloud.com:20276" -c "C:\Users\EricHou\Downloads\aiven\ca.pem" -e "C:\Users\EricHou\Downloads\aiven\service.cert" -y "C:\Users\EricHou\Downloads\aiven\service.key" -p "postgres://username:password@pg-xxxxx.aivencloud.com:20274/webavailability?sslmode=require" -g "C:\Users\EricHou\Downloads\aiven\pgca.pem"
+
+Run in smart mode
+
+    pipenv run python recorder.py -d www.google.com,aiven.io -k "kafka-xxxxx.aivencloud.com:20276" -c "C:\Users\EricHou\Downloads\aiven\ca.pem" -e "C:\Users\EricHou\Downloads\aiven\service.cert" -y "C:\Users\EricHou\Downloads\aiven\service.key" -p "postgres://username:password@pg-xxxxx.aivencloud.com:20274/webavailability?sslmode=require" -g "C:\Users\EricHou\Downloads\aiven\pgca.pem" -s
 
 ## Run from docker image
 ### How to run Tracker
@@ -173,7 +190,7 @@ be found in tracker.py.
       # 'https://aiven.io <svg\s+' means the loaded page will be checked against regexp '<svg\s+'
       WEBSITES=https://www.google.com,https://aiven.io <svg\s+
       PERIOD=30
-      KAFKA=kafka-3f77ed08-benben3956-6e6a.aivencloud.com:20276
+      KAFKA=kafka-xxxxx.aivencloud.com:20276
       CA=/tmp/certs/ca.pem
       CERT=/tmp/certs/service.cert
       KEY=/tmp/certs/service.key
@@ -190,11 +207,11 @@ Run it like the following.
   be found in recorder.py. 
   
       DOMAIN=www.google.com,aiven.io 
-      KAFKA=kafka-3f77ed08-benben3956-6e6a.aivencloud.com:20276
+      KAFKA=kafka-xxxxx.aivencloud.com:20276
       CA=/tmp/certs/ca.pem
       CERT=/tmp/certs/service.cert
       KEY=/tmp/certs/service.key
-      POSTGRES=postgres://username:password@pg-9971643-benben3956-6e6a.aivencloud.com:20274/webavailability?sslmode=require
+      POSTGRES=postgres://username:password@pg-xxxxx.aivencloud.com:20274/webavailability?sslmode=require
       GPCA=/tmp/certs/pgca.pem
   
 * Run it 

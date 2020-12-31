@@ -21,12 +21,13 @@ class MockDB:
     """
     A mock DB Connection to verify SQl statement.
     """
-    def __init__(self, something_to_fetch=None):
+    def __init__(self, something_to_fetch=[]):
         self.sqls = []
+        self.curs = None
         self.something_to_fetch = something_to_fetch
 
     class MockCursor:
-        def __init__(self, something_to_fetch=None):
+        def __init__(self, something_to_fetch=[]):
             self.sqls = []
             self.something_to_fetch = something_to_fetch
 
@@ -34,22 +35,36 @@ class MockDB:
             self.sqls.append(sql)
 
         def fetchone(self):
-            return self.something_to_fetch
+            try:
+                return self.something_to_fetch.pop(0)
+            except IndexError:
+                return None
 
     @contextmanager
     def cursor(self):
-        curs = MockDB.MockCursor(self.something_to_fetch)
-        yield curs
-        self.sqls = curs.sqls
+        if self.curs is None:
+            self.curs = MockDB.MockCursor(self.something_to_fetch)
+        yield self.curs
+        self.sqls = self.curs.sqls
 
     def commit(self):
         pass
 
 
+def sqls_compare(sql_list1, sql_list2):
+    """
+    To compare two sql statements lists. Two sql lists are equal only when
+    1. Contains the list has the same number of sql statements
+    2. The tokens in every corresponding statement are the same in the order
+    """
+    sql1_tokens = [sql.split() for sql in sql_list1]
+    sql2_tokens = [sql.split() for sql in sql_list2]
+    return sql1_tokens == sql2_tokens
+
+
 def test_type_schema():
     """
     Verify WebsiteStatus::create_type_schema
-    Note: since it is just SQL statement comparison, every whitespace counts. Sigh!
     """
     response_status_type_select_sql = "select 1 from pg_type where typname = 'response_status'"
     response_status_type_sql = "CREATE TYPE response_status AS ENUM ('responsive', 'unresponsive');"
@@ -60,18 +75,17 @@ def test_type_schema():
     db = MockDB()
     WebsiteStatus.create_type_schema(db)
     # Verify 'CREATE TYPE' statement if TYPE phrase_status doesn't exit
-    assert db.sqls == [response_status_type_select_sql, response_status_type_sql,
-                       phrases_type_select_sql, phrase_type_sql]
-    db = MockDB(True)
+    assert sqls_compare(db.sqls, [response_status_type_select_sql, response_status_type_sql,
+                                  phrases_type_select_sql, phrase_type_sql])
+    db = MockDB([[1], [1]])
     WebsiteStatus.create_type_schema(db)
     # Verify no 'CREATE TYPE' statement is executed if TYPE phrase_status exits
-    assert db.sqls == [response_status_type_select_sql, phrases_type_select_sql]
+    assert sqls_compare(db.sqls, [response_status_type_select_sql, phrases_type_select_sql])
 
 
 def test_table_schema():
     """
     Verify WebsiteStatus::create_table_schema
-    Note: since it is just SQL statement comparison, every whitespace counts. Sigh!
     """
     table_sql = '''
         CREATE TABLE IF NOT EXISTS web_activity_aiven_io (
@@ -93,7 +107,7 @@ def test_table_schema():
         '''
     db = MockDB()
     WebsiteStatus.create_table_schema('aiven.io', db)
-    assert db.sqls == [table_sql, index_sql]
+    assert sqls_compare(db.sqls, [table_sql, index_sql])
 
 
 def test_get_last_offset():
@@ -109,54 +123,151 @@ def test_get_last_offset():
     r = WebsiteStatus.get_last_offset('aiven.io', db)
     assert db.sqls == [sql]
     assert r == -1
-    # Verify returning the correct number for the existing last offset
+    # Verify returning the correct number for an existing last offset
     rnum = randint(1, 0xFFFFFFFF)
-    db = MockDB([rnum])
+    db = MockDB([[rnum]])
     r = WebsiteStatus.get_last_offset('aiven.io', db)
-    assert db.sqls == [sql]
+    assert sqls_compare(db.sqls, [sql])
     assert r == rnum
 
 
-def test_abnormal():
+def test_healthy():
     """
-    Verify WebsiteStatus::abnormal
+    Verify WebsiteStatus::healthy
     """
-    webstatus = WebsiteStatus('Sydney', 'https://aiven.io', 'reSponsive', 'Ok', 10, 300)
-    assert webstatus.abnormal() is False
-    # Loop all phrases excluding 'ok' for 'responsive'
-    for phrase in phrases:
-        if phrase == 'ok':
-            continue
-        webstatus = WebsiteStatus('Sydney', 'https://aiven.io', 'responsive', phrase, 10, 300)
-        assert webstatus.abnormal() is True
-    # Loop all phrases for 'unresponsive'
-    for phrase in phrases:
-        webstatus = WebsiteStatus('Sydney', 'https://aiven.io', 'unresponsive', phrase, 10, 300)
-        assert webstatus.abnormal() is True
+    # All cases' verification
+    for status in ['responsive', 'unresponsive']:
+        for phrase in phrases:
+            web_status = WebsiteStatus('Sydney', 'https://aiven.io', status, phrase, 10, 300)
+            if status == 'responsive' and phrase == 'ok':
+                assert web_status.healthy() is True
+            else:
+                assert web_status.healthy() is False
 
 
 def test_insert_status():
     """
     Verify WebsiteStatus::insert_status by checking a correct INSERT SQL is submitted to DB.
-    Note: since it is just SQL statement comparison, every whitespace counts. Sigh!
     """
-    webstatus = WebsiteStatus('Sydney', 'https://aiven.io', 'responsive', 'ok', 10, 300)
-    sql = f'''INSERT INTO web_activity_aiven_io (topic_offset, test_from, url,
-        event_time, status, phrase, dns, response, detail) VALUES (
-        {webstatus["offset"]}, '{webstatus["from"]}', '{webstatus["url"]}', {webstatus["timestamp"]},
-        '{webstatus["status"]}', '{webstatus["phrase"]}', {webstatus["dns"] if webstatus["dns"] else -1},
-        {webstatus["response"] if webstatus["response"] else -1}, '{webstatus["detail"] if webstatus["detail"] else ""}'
-        );'''
+    last_id_sql = 'SELECT LASTVAL();'
 
+    # All cases' verification
+    for status in ['responsive', 'unresponsive']:
+        for phrase in phrases:
+            web_status = WebsiteStatus('Sydney', 'https://aiven.io', status, phrase, 10, 300)
+            sql = f'''INSERT INTO web_activity_aiven_io (topic_offset, test_from, url,
+            event_time, status, phrase, dns, response, detail) VALUES (
+            {web_status["offset"]}, '{web_status["from"]}', '{web_status["url"]}', {int(web_status["timestamp"])},
+            '{web_status["status"]}', '{web_status["phrase"]}', {web_status["dns"] if web_status["dns"] else -1},
+            {web_status["response"] if web_status["response"] else -1},
+            '{web_status["detail"]}'
+            );'''
+            # A random number to emulate last insert ID
+            rnum = randint(1, 0xFFFFFFFF)
+            db = MockDB([[rnum]])
+            web_status.insert_status(db)
+            # Verify executed statements
+            assert sqls_compare(db.sqls, [sql, last_id_sql])
+            # Verify WebsiteStatus::insert_status updated
+            if status == 'responsive' and phrase == 'ok':
+                assert WebsiteStatus.last_url_status['https://aiven.io'] == (True, rnum)
+            else:
+                assert WebsiteStatus.last_url_status['https://aiven.io'] == (False, rnum)
+
+
+def test_insert_status_smart():
+    """
+    Test WebsiteStatus::insert_status_smart
+    """
+    last_status_sql = '''
+        SELECT id, status, phrase from web_activity_aiven_io WHERE url = 'https://aiven.io'
+        ORDER BY id DESC LIMIT 1;
+    '''
+    insert_sql = '''INSERT INTO web_activity_aiven_io (topic_offset, test_from, url,
+    event_time, status, phrase, dns, response, detail) VALUES (
+    %d, 'sydney', 'https://aiven.io', %d, '%s', '%s', %d, %d, '%s'
+    );'''
+    last_id_sql = 'SELECT LASTVAL();'
+    # Case 1: Verify a new status record is inserted when table is empty
+    WebsiteStatus.last_url_status = {}
+    web_status = WebsiteStatus('Sydney', 'https://aiven.io', 'responsive', 'ok', 10, 300, '', 200)
+    rnum = randint(1, 0xFFFFFFFF)
+    db = MockDB([None, [rnum]])
+    web_status.insert_status_smart(db)
+    insert_sql_value = insert_sql % (web_status['offset'], web_status['timestamp'], 'responsive', 'ok', 10, 300, '')
+    # Verify SQLs
+    assert sqls_compare(db.sqls, [last_status_sql, insert_sql_value, last_id_sql])
+    # Verify WebsiteStatus.last_url_status cache's content
+    assert WebsiteStatus.last_url_status['https://aiven.io'] == (True, rnum)
+
+    # Case 2: Verify a healthy record updates the existing record if the table is not empty
+    WebsiteStatus.last_url_status = {}
+    web_status = WebsiteStatus('Sydney', 'https://aiven.io', 'responsive', 'ok', 10, 300, '', 200)
+    rnum1 = randint(1, 0xFFFFFFFF)
+    rnum2 = randint(1, 0xFFFFFFFF)
+    db = MockDB([[rnum1, 'responsive', 'ok'], [rnum2]])
+    update_sql = f'''
+    UPDATE web_activity_aiven_io SET (created_at, topic_offset, event_time) = (CURRENT_TIMESTAMP,
+    {web_status['offset']}, {web_status['timestamp']}) WHERE id = {rnum1};
+    '''
+    web_status.insert_status_smart(db)
+    # Verify SQLs
+    assert sqls_compare(db.sqls, [last_status_sql, update_sql])
+    # Verify WebsiteStatus.last_url_status contains lasting healthy record from table
+    assert WebsiteStatus.last_url_status['https://aiven.io'] == (True, rnum1)
+
+    # Case 3: Verify a healthy record updates the existing record if it is healthy too
+    web_status = WebsiteStatus('Sydney', 'https://aiven.io', 'responsive', 'ok', 10, 300, '', 201)
     db = MockDB()
-    webstatus.insert_status(db)
-    assert db.sqls == [sql]
+    update_sql = f'''
+    UPDATE web_activity_aiven_io SET (created_at, topic_offset, event_time) = (CURRENT_TIMESTAMP,
+    {web_status['offset']}, {web_status['timestamp']}) WHERE id = {WebsiteStatus.last_url_status[web_status['url']][1]};
+    '''
+    # Insert another record, which is supposed to update the last one only
+    web_status.insert_status_smart(db)
+    assert sqls_compare(db.sqls, [update_sql])
+    # Verify WebsiteStatus.last_url_status cache keeps unchanged since it is an update
+    assert WebsiteStatus.last_url_status['https://aiven.io'] == (True, rnum1)
+
+    # Case 4: Verify an unhealthy record is inserted when the last record is healthy
+    rnum = randint(1, 0xFFFFFFFF)
+    web_status = WebsiteStatus('Sydney', 'https://aiven.io', 'unresponsive', 'connection timeout', 10, 300, '', rnum)
+    db = MockDB([[rnum]])
+    web_status.insert_status_smart(db)
+    insert_sql_value = insert_sql % (web_status['offset'], web_status['timestamp'], web_status['status'],
+                                     web_status['phrase'], 10, 300, '')
+    assert sqls_compare(db.sqls, [insert_sql_value, last_id_sql])
+    # Verify WebsiteStatus.last_url_status cache is updated
+    assert WebsiteStatus.last_url_status['https://aiven.io'] == (False, rnum)
+
+    # Case 5: Verify a healthy record is inserted if the last record is unhealthy
+    rnum = randint(1, 0xFFFFFFFF)
+    web_status = WebsiteStatus('Sydney', 'https://aiven.io', 'responsive', 'ok', 10, 300, '', rnum)
+    db = MockDB([[rnum]])
+    web_status.insert_status_smart(db)
+    insert_sql_value = insert_sql % (web_status['offset'], web_status['timestamp'], web_status['status'],
+                                     web_status['phrase'], 10, 300, '')
+    assert sqls_compare(db.sqls, [insert_sql_value, last_id_sql])
+    # Verify WebsiteStatus.last_url_status cache is updated
+    assert WebsiteStatus.last_url_status['https://aiven.io'] == (True, rnum)
+
+    # Case 6: Verify an unhealthy status record is inserted when the last record is unhealthy too
+    rnum = randint(1, 0xFFFFFFFF)
+    web_status = WebsiteStatus('Sydney', 'https://aiven.io', 'responsive', 'ssl error', 10, 300, '', rnum)
+    db = MockDB([[rnum]])
+    web_status.insert_status_smart(db)
+    insert_sql_value = insert_sql % (web_status['offset'], web_status['timestamp'], web_status['status'],
+                                     web_status['phrase'], 10, 300, '')
+    assert sqls_compare(db.sqls, [insert_sql_value, last_id_sql])
+    # Verify WebsiteStatus.last_url_status cache is updated
+    assert WebsiteStatus.last_url_status['https://aiven.io'] == (False, rnum)
 
 
 def test_serialize():
     """
     Test WebsiteStatus::serialize
     """
+    # All cases' verification
     for status in ['responsive', 'unresponsive']:
         for phrase in phrases:
             if phrase == 'page content not expected':
